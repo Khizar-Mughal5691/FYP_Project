@@ -1,0 +1,32 @@
+{
+  "g0": true,
+  "g1": false,
+  "rollouts": 1000,
+  "seconds": 43.8,
+  "simulated": {
+    "matches": 1000,
+    "goals": 2.757,
+    "shots": 26.469,
+    "xg": 2.739482309915405,
+    "passes": 983.296,
+    "completion": 0.7692383575240823,
+    "carries": 738.071,
+    "dribbles": 33.944,
+    "decisions": 1876.102,
+    "home_win": 0.374,
+    "draw": 0.255,
+    "away_win": 0.371
+  },
+  "real": {
+    "matches": 1213,
+    "goals": 2.5045342126957957,
+    "shots": 24.9563066776587,
+    "passes": 974.3000824402309,
+    "completion": 0.7713569854020078,
+    "carries": 733.4517724649629,
+    "dribbles": 34.58697444352844,
+    "decisions": 1871.7873042044519
+  },
+  "real_home_win": 0.43033800494641383,
+  "real_draw": 0.2745259686727123
+}

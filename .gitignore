@@ -1,0 +1,26 @@
+# Environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Data and trained models are rebuilt by scripts/, never committed.
+# The leading slash matters: src/metafut/data and src/metafut/models are source code.
+/data/
+/models/
+*.parquet
+*.joblib
+*.pkl
+*.npz
+*.json.gz
+
+# Local settings
+.env
+.vscode/
+.idea/
+
+# Frontend
+node_modules/
+dist/
