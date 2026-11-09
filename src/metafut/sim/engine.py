@@ -15,6 +15,7 @@ import numpy as np
 
 from metafut.config import (ACTION_ID, BUNDLE, MODEL_DIR, PHASE_ID, PITCH_X, PITCH_Y, POSITION_ID,
                             POSITIONS, RESULT_ID)
+from metafut.models.fast_predict import FastHGB
 from metafut.models.features import (N_ZONES, PASS_PROFILE, TEAM_ATT, TEAM_DEF, action_features,
                                      pass_features, shot_features, zone)
 from metafut.models.profiles import N_STYLE_ZONES, style_zone
@@ -100,9 +101,10 @@ TRACE_COLUMNS = ["match", "team", "slot", "t", "x", "y", "end_x", "end_y", "phas
 class Simulator:
     def __init__(self, bundle=None):
         b = bundle or joblib.load(MODEL_DIR / BUNDLE)
-        self.pass_model = b["pass_model"]
-        self.action_model = b["action_model"]
-        self.shot_model = b["shot_model"]
+        # Same predictions as the fitted models, with less overhead per call (models/fast_predict.py).
+        self.pass_model = FastHGB(b["pass_model"])
+        self.action_model = FastHGB(b["action_model"])
+        self.shot_model = FastHGB(b["shot_model"])
         self.pools = b["pools"]
         self.tables = b["tables"]
         self.profiles = b["profiles"]

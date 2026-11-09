@@ -44,6 +44,16 @@ python scripts/simulate_match.py "Barcelona" "Real Madrid"
 python scripts/simulate_match.py --teams
 ```
 
+## Run the API
+
+```bash
+python backend/manage.py runserver
+```
+
+Then open `http://127.0.0.1:8000/api/teams/` in a browser. The endpoints and their responses are
+in [docs/api.md](docs/api.md), and the screens of the interface in
+[docs/frontend-screens.md](docs/frontend-screens.md).
+
 ## Layout
 
 | Path | What it holds |
@@ -52,6 +62,7 @@ python scripts/simulate_match.py --teams
 | `src/metafut/models` | Features, sampling pools, team and player profiles, model training |
 | `src/metafut/sim` | The batched match simulator, fixtures (who plays) and calibration |
 | `src/metafut/eval` | Forecast scoring and baselines (Dixon-Coles, bookmaker odds) |
+| `backend` | Django REST API: settings, endpoints and the services they call |
 | `scripts` | Numbered steps to rebuild everything, plus a match demo |
 | `reports` | Saved model and gate results |
 | `docs/modules` | One note per module for the thesis |
