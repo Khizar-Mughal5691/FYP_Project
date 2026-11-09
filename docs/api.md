@@ -1,7 +1,13 @@
 # Meta-Fut A.I REST API
 
-The contract between the Django backend and the React frontend. Version 1, 9 November 2026.
+The contract between the Django backend and the React frontend. Version 1.1, 9 November 2026.
 Every response is JSON. Field names use snake_case.
+
+Version 1.1 only adds things, so version 1 clients keep working:
+- `GET /api/players/` finds players by name, league, team and position.
+- Every player has a `short_name`, the name they are known by ("Lionel Messi").
+- Where a player appears with a team, they also have their shirt `number` and usual `role`
+  ("Right Wing"). A team has its most used `formation`.
 
 ## Running it
 
@@ -22,6 +28,7 @@ few seconds longer.
 | GET | `/api/health/` | Status, model, number of teams and players, leagues, data credit | – |
 | GET | `/api/teams/` | All 80 teams; `?league=la_liga` gives one league | Profiles |
 | GET | `/api/teams/{team}/` | One team's profile numbers, usual eleven and squad | Profiles |
+| GET | `/api/players/` | Find players: `?search=messi&league=la_liga&team=barcelona&position=FWD&limit=60` | Profiles |
 | GET | `/api/players/{player_id}/` | One player's action mix, involvement and touch map | Profiles |
 | POST | `/api/simulations/` | Simulate a fixture many times: chances, scorelines, likely scorers, a sample match | Simulation |
 
@@ -53,31 +60,66 @@ Show the `error` text to the user. It is written to be read by a person.
 ```json
 {
   "id": "barcelona", "name": "Barcelona", "league": "la_liga", "league_name": "La Liga",
+  "formation": "4-3-3",
   "profile": [
     {"key": "att_pass", "label": "Pass completion", "value": 0.8547, "league_average": 0.7726,
      "better": "higher", "rank": 2, "out_of": 80}
   ],
-  "usual_xi": [{"player_id": 4691, "name": "Claudio Andrés Bravo Muñoz", "position": "GK"}],
-  "squad": [{"player_id": 5246, "name": "Luis Alberto Suárez Díaz", "position": "FWD",
+  "usual_xi": [{"player_id": 4691, "name": "Claudio Andrés Bravo Muñoz", "short_name": "Claudio Bravo",
+                "position": "GK", "number": 13, "role": "Goalkeeper"}],
+  "squad": [{"player_id": 5246, "name": "Luis Alberto Suárez Díaz", "short_name": "Luis Suárez",
+             "position": "FWD", "number": 9, "role": "Center Forward",
              "starts": 21, "matches": 21, "decisions": 1455}],
   "credit": "Data: StatsBomb open data, 2015/16 season, used for non-commercial research."
 }
 ```
 
+- `formation` is the formation the team started with most often, such as `4-2-3-1`.
 - `profile` always has eight numbers, in the order `att_pass`, `att_shot`, `att_loss`, `def_pass`,
   `def_shot`, `def_loss`, `def_press`, `press_factor`.
 - `rank` is 1 for the best of the 80 teams. `better` says whether a higher or a lower value is
   better, so a bar chart can colour it.
 - `usual_xi` always has 11 players with exactly one `GK`.
 - `squad` is everyone who played for the team in the training matches, most starts first.
+- `short_name` is the name a player is known by; it equals `name` when StatsBomb gives no
+  nickname. `number` is the shirt number the player wore most often for this team.
+- `role` is the StatsBomb position the player started in most often for this team, such as
+  `Left Center Back` or `Right Wing`, or `null` for a player who only came on as a substitute.
+  With the team attacking to the right, "Left" roles are near y = 0 and "Right" roles near y = 80.
+
+## GET /api/players/
+
+Every filter is optional. Players come most involved first (most on-ball decisions in the
+training matches); with `search`, players known by that name come first.
+
+| Filter | Meaning |
+|---|---|
+| `search` | Part of a name, ignoring case and accents: `suarez` finds Luis Suárez |
+| `league` | A league id, such as `serie_a` |
+| `team` | A team id or name: the players who played for that team |
+| `position` | `GK`, `DEF`, `MID` or `FWD` |
+| `limit` | How many to return, 1 to 200; default 60 |
+
+```json
+{
+  "count": 7,
+  "results": [{"player_id": 5246, "name": "Luis Alberto Suárez Díaz", "short_name": "Luis Suárez",
+               "position": "FWD", "number": 9, "role": "Center Forward",
+               "team": {"id": "barcelona", "name": "Barcelona", "league": "la_liga", "league_name": "La Liga"},
+               "starts": 21, "matches": 21, "decisions": 1455, "decisions_per_match": 66.88}]
+}
+```
+
+`count` is how many players match, before `limit`. `team` is the team the player made most of
+their decisions for.
 
 ## GET /api/players/{player_id}/
 
 ```json
 {
-  "player_id": 5503, "name": "Lionel Andrés Messi Cuccittini", "position": "FWD",
+  "player_id": 5503, "name": "Lionel Andrés Messi Cuccittini", "short_name": "Lionel Messi", "position": "FWD",
   "teams": [{"id": "barcelona", "name": "Barcelona", "league": "la_liga", "league_name": "La Liga",
-             "starts": 15, "matches": 17, "decisions": 2186}],
+             "number": 10, "role": "Right Wing", "starts": 15, "matches": 17, "decisions": 2186}],
   "actions": [{"action": "dribble", "share": 0.0589, "position_average": 0.037}],
   "involvement": {"decisions_per_match": 116.81, "position_average": 50.05},
   "touch_map": {"columns": 6, "rows": 4, "zone_size_yards": [20, 20],
@@ -139,6 +181,8 @@ Response (shortened):
 
 - `probabilities` add up to 1. `scorelines` lists the 10 most frequent results.
 - `average.*.goals` is the mean of the simulated scores; `xg` is expected goals.
+- Players in `lineups` and `likely_scorers` also have `short_name`, `number` and `role`, and every
+  goal and event has the player's `short_name`.
 - `sample_match` is the first of the simulated matches. `events` is only there when
   `include_events` is true. Coordinates are StatsBomb yards: x 0 to 120 from the acting team's
   own goal to the opponent's goal, y 0 to 80.

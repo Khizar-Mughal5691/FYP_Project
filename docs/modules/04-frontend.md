@@ -8,7 +8,7 @@ are listed in [../frontend-screens.md](../frontend-screens.md), and the API they
 | Batch | Screens | Status |
 |---|---|---|
 | 1. Foundation | Design system, layout, menu, API connection, Home, About | Built 9 November 2026, tested and confirmed by Faizan the same day |
-| 2. Teams and players | Teams, team profile, player profile | Next |
+| 2. Teams and players | Teams, team profile, player finder, player profile | Built 9 November 2026, tested and confirmed by Faizan the same day |
 | 3. Simulator | Match simulator, results | Planned |
 | 4. Interactive | Lineup editor, match replay | Planned |
 | 5. Later features (mock data) | Tactics, scenario comparison, outcome analysis, saved scenarios | Planned |
@@ -85,3 +85,91 @@ planned for batch 6.
 | `frontend/src/components/` | Layout and menu, API badge, pitch drawing, shared UI parts |
 | `frontend/src/pages/` | Home, About, coming-soon and not-found pages |
 | `frontend/src/test/` | Test set-up and tests |
+
+## Batch 2: Teams and players
+
+The screens of the first Phase-I feature, player behavioural modelling. Everything on them comes
+live from the API.
+
+**What it does.**
+- **Teams** (`/teams`): all 80 teams in league groups. Filter by league, or search by name; accents
+  are ignored, so "atletico" finds Atlético Madrid. The filters are kept in the address, so a
+  filtered list can be bookmarked or shared.
+- **Team profile** (`/teams/barcelona`): the eight profile numbers as meters that show the team's
+  rank among all 80, with its value and the average. A full meter is the best team, whether "best"
+  means the highest or the lowest value. Above them, the team's best and lowest ranks. The usual
+  eleven stands on a pitch in their usual roles with their shirt numbers, and the squad table sorts
+  by any column.
+- **Players** (`/players`): a finder for all 1,993 players, most involved first. Search by name and
+  filter by league and position; 60 players at a time, up to 200.
+- **Player profile** (`/players/5503`): decisions per match against a typical player in the same
+  position; the action mix as bars with a tick for the typical player; the clearest differences in
+  words ("Dribbles on 5.9% of decisions, 1.6 times as often as a typical forward"); and the touch
+  map as a heatmap on a pitch. The touch map switches to the typical player, shows any zone's
+  numbers on hover or tap, lists the busiest zones, and has a table view.
+
+**Added to the API (version 1.1).** The screens needed three things the API did not have yet:
+- A player finder, `GET /api/players/`. Without it there was no way to find a player by name.
+- Short names and shirt numbers. StatsBomb's event files only have full names ("Lionel Andrés Messi
+  Cuccittini"). Its lineup files have the names players are known by ("Lionel Messi") and shirt
+  numbers. They are now downloaded too (1,517 small files, about 5 minutes) and turned into
+  `players.parquet`. Only the interface uses this table; the models never read it.
+- Each player's usual role ("Right Wing") and each team's usual formation, taken from the lineups
+  table that already existed, so the eleven can be drawn where they really play.
+
+All three are new fields or a new address, so anything written for version 1 keeps working.
+
+**Design decisions.**
+- Team badges are shields with the team's letters, coloured from the team's name. The real crests
+  belong to the clubs, so they are not used.
+- The theme's bright colours are too light for filled chart marks on a dark background. A colour
+  checker (lightness, contrast, colour-blind separation) confirmed it, so charts use deeper steps
+  of the same hues. The home and away pair for batch 3 passed the same check.
+- The touch map uses one colour, brighter for more, and the player and the typical player share
+  one scale, so switching between them compares like with like.
+- No chart depends on colour or hover alone: values are printed, meters state the rank in words,
+  and the touch map has a table view.
+
+**Problems found and fixed.**
+- At small sizes, the monospace font's dotted zero looked like an 8 ("20 starts" read as "28").
+  Numbers now use the body font with equal-width digits.
+- Very small shares showed as "0.0%" (Messi's clearances). They now show as "<0.1%".
+- Long full names were cut off in the list under the eleven. The list now uses short names, with
+  the role on its own line.
+- On a laptop the touch map pitch filled the whole width and was taller than the screen. It now
+  sits beside a side panel.
+- Searching "suarez" listed Isco before Luis Suárez, because Isco's full name is Francisco Román
+  Alarcón Suárez. Players known by the searched name now come first.
+- Pages opened by typing their address all shared one scroll-position key, so a new address could
+  open part-way down. They are now told apart by their path.
+
+**Checked.**
+- 18 frontend tests pass: the 10 from batch 1 and 8 new ones (name and badge helpers, placing the
+  eleven, Teams filters, team profile with sorting, an unknown team, player profile with the touch
+  map views, and the player finder).
+- 63 Python tests pass, including new API tests for the finder (filters, order, bad requests),
+  short names and shirt numbers (Lionel Messi, 10), formations, and Suárez before Isco.
+- All four screens were checked in a browser at laptop (1440 px) and phone (375 px) widths,
+  including hover on the touch map, search, and returning to the same place with Back.
+
+**Known limits.**
+- Ranks compare a team with all 80 teams of the four leagues, not only its own league.
+- "Shots" is shots as a share of a team's decisions. Barcelona ranks 61st because it makes so many
+  passes, not because it shoots rarely. This is worth saying at the viva before someone asks.
+- The built JavaScript is now 548 kB (174 kB compressed). Splitting it per screen is planned for
+  batch 6.
+
+## Files (batch 2)
+
+| File | Responsibility |
+|---|---|
+| `frontend/src/pages/Teams.jsx`, `TeamProfile.jsx` | Screens 2 and 3 |
+| `frontend/src/pages/Players.jsx`, `PlayerProfile.jsx` | The player finder and screen 4 |
+| `frontend/src/components/ProfileMeters.jsx` | The eight team numbers as rank meters |
+| `frontend/src/components/LineupPitch.jsx`, `src/lib/lineup.js` | The eleven on a pitch, placed by role |
+| `frontend/src/components/ActionMix.jsx`, `TouchMap.jsx` | A player's action mix and touch map |
+| `frontend/src/components/TeamBadge.jsx`, `src/lib/teams.js` | Team badges |
+| `frontend/src/lib/format.js` | Number and name formats |
+| `frontend/src/test/explore.test.jsx`, `fixtures.js` | Batch 2 tests and their sample data |
+| `backend/api/services.py`, `views.py`, `urls.py` | Player finder, short names, numbers, roles, formation |
+| `src/metafut/data/ingest.py`, `actions.py` | Download lineup files; build `players.parquet` |

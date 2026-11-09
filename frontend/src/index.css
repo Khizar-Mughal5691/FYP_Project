@@ -29,6 +29,13 @@
   --color-home: #4fd6a6;
   --color-away: #f39b5b;
   --color-alert: #f07167;
+
+  /* Chart marks. The colours above are too light for filled marks on a dark surface, so charts
+     use these deeper steps of the same hues (checked for lightness, contrast and colour-blind
+     separation against the card colour). */
+  --color-chart: #01a75d;
+  --color-chart-home: #00a679;
+  --color-chart-away: #c87431;
 }
 
 @layer base {

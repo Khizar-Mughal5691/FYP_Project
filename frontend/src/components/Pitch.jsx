@@ -1,17 +1,19 @@
 // A football pitch in StatsBomb units: 120 by 80 yards, x from one goal to the other. Anything
 // passed as children is drawn in the same units, so the API's coordinates can be used as they are.
+// `underlay` is drawn below the pitch lines (for example a heatmap), `children` above them.
 
 const LINE = { fill: "none", stroke: "currentColor", strokeWidth: 0.5 };
 
-export default function Pitch({ children, className, stripes = true, title }) {
+export default function Pitch({ children, underlay, className, stripes = true, title, role }) {
   return (
-    <svg viewBox="-4 -4 128 88" className={className} role={title ? "img" : undefined}
+    <svg viewBox="-4 -4 128 88" className={className} role={role ?? (title ? "img" : undefined)}
          aria-label={title} aria-hidden={title ? undefined : true}>
       <rect x="0" y="0" width="120" height="80" rx="1" className="fill-pitch-800" />
       {stripes && Array.from({ length: 12 }, (_, i) => (
         <rect key={i} x={i * 10} y="0" width="10" height="80" className={i % 2 ? "fill-white/[0.025]" : "fill-transparent"} />
       ))}
-      <g className="text-white/25">
+      {underlay}
+      <g className="pointer-events-none text-white/25">
         <rect x="0" y="0" width="120" height="80" {...LINE} />
         <line x1="60" y1="0" x2="60" y2="80" {...LINE} />
         <circle cx="60" cy="40" r="10" {...LINE} />

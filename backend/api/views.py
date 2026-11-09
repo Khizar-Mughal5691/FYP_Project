@@ -24,6 +24,8 @@ def index(request):
             dict(method="GET", url=base + "health/", purpose="Status and data credit"),
             dict(method="GET", url=base + "teams/", purpose="All 80 teams; add ?league=la_liga for one league"),
             dict(method="GET", url=base + "teams/barcelona/", purpose="One team's profile, usual eleven and squad"),
+            dict(method="GET", url=base + "players/?search=messi",
+                 purpose="Find players; filters: search, league, team, position, limit"),
             dict(method="GET", url=base + "players/5503/", purpose="One player's profile (5503 is Lionel Messi)"),
             dict(method="POST", url=base + "simulations/",
                  purpose='Simulate a fixture. Body: {"home": "barcelona", "away": "real-madrid", "rollouts": 200}'),
@@ -48,6 +50,14 @@ def teams(request):
 def team(request, team_id):
     """One team: its profile numbers, usual eleven and squad."""
     return _respond(services.team_detail, team_id)
+
+
+@api_view(["GET"])
+def players(request):
+    """Find players, most involved first: ?search=messi&league=la_liga&team=barcelona&position=FWD&limit=60"""
+    q = request.query_params
+    return _respond(services.player_list, q.get("search"), q.get("league"), q.get("team"), q.get("position"),
+                    q.get("limit", services.DEFAULT_PLAYERS))
 
 
 @api_view(["GET"])

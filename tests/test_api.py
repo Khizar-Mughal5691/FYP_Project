@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from metafut.config import BUNDLE, MODEL_DIR
+from metafut.config import BUNDLE, MODEL_DIR, TABLE_DIR
 
 pytestmark = pytest.mark.skipif(not (MODEL_DIR / BUNDLE).exists(), reason="run scripts/03_train_models.py first")
 
@@ -32,7 +32,7 @@ def test_bare_address_leads_to_the_api_index(client):
     r = client.get("/")
     assert r.status_code == 302 and r["Location"] == "/api/"
     status, body = get(client, "/api/")
-    assert status == 200 and len(body["endpoints"]) == 5
+    assert status == 200 and len(body["endpoints"]) == 6
     assert all(e["url"].startswith("http://testserver/api/") for e in body["endpoints"])
 
 
@@ -56,6 +56,7 @@ def test_team_detail_by_id_or_by_name(client):
     assert status == 200 and team["name"] == "Atlético Madrid"
     assert get(client, "/api/teams/Atletico%20Madrid/")[1]["id"] == "atletico-madrid"
     assert len(team["profile"]) == 8
+    assert len(team["formation"].split("-")) >= 3          # such as "4-2-3-1"
     assert all(1 <= p["rank"] <= p["out_of"] == 80 for p in team["profile"])
     assert len(team["usual_xi"]) == 11
     assert sum(p["position"] == "GK" for p in team["usual_xi"]) == 1
@@ -76,6 +77,36 @@ def test_player_detail(client):
     assert len(player["touch_map"]["values"]) == player["touch_map"]["columns"] * player["touch_map"]["rows"]
     assert player["teams"][0]["id"] == "barcelona"
     assert get(client, "/api/players/1/")[0] == 404
+
+
+def test_player_search_and_filters(client):
+    status, found = get(client, "/api/players/?search=MESSI")
+    assert status == 200 and found["count"] >= 1
+    assert "Messi" in found["results"][0]["name"] and found["results"][0]["team"]["id"] == "barcelona"
+    status, keepers = get(client, "/api/players/?league=serie_a&position=gk&limit=5")
+    assert status == 200 and len(keepers["results"]) == 5 < keepers["count"]
+    assert all(p["position"] == "GK" and p["team"]["league"] == "serie_a" for p in keepers["results"])
+    # Most involved first.
+    decisions = [p["decisions"] for p in keepers["results"]]
+    assert decisions == sorted(decisions, reverse=True)
+    squad = get(client, "/api/teams/barcelona/")[1]["squad"]
+    assert get(client, "/api/players/?team=barcelona&limit=200")[1]["count"] == len(squad)
+    # Players known by the name come first: Luis Suárez before Isco (Francisco Román Alarcón Suárez).
+    names = [p["short_name"] for p in get(client, "/api/players/?search=suarez")[1]["results"]]
+    if (TABLE_DIR / "players.parquet").exists():
+        assert names.index("Luis Suárez") < names.index("Isco")
+    for bad in ("position=striker", "limit=0", "limit=many", "league=mls"):
+        assert get(client, f"/api/players/?{bad}")[0] == 400
+    assert get(client, "/api/players/?team=nowhere")[0] == 404
+
+
+def test_players_have_display_names(client):
+    team = get(client, "/api/teams/barcelona/")[1]
+    assert all(p["short_name"] for p in team["squad"] + team["usual_xi"])
+    assert all(p["role"] for p in team["usual_xi"])          # everyone in the eleven has started
+    if (TABLE_DIR / "players.parquet").exists():
+        messi = next(p for p in team["squad"] if "Messi" in p["name"])
+        assert messi["short_name"] == "Lionel Messi" and messi["number"] == 10
 
 
 def test_simulation(client):

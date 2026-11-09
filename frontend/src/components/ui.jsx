@@ -1,6 +1,6 @@
 // Small building blocks shared by every page.
 import { Link } from "react-router";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, RefreshCw, Search } from "lucide-react";
 import { START_API_COMMAND } from "../api/client";
 
 export function cx(...parts) {
@@ -75,6 +75,64 @@ export function Spinner({ label = "Loading" }) {
     <span role="status" className="inline-flex items-center gap-2 text-sm text-mist">
       <Loader2 className="size-4 animate-spin" aria-hidden /> {label}
     </span>
+  );
+}
+
+export function Skeleton({ className }) {
+  return <span aria-hidden className={cx("block animate-pulse rounded-lg bg-white/8", className)} />;
+}
+
+export function SectionTitle({ id, children, hint, actions }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h2 id={id} className="font-display text-2xl font-bold uppercase tracking-wide">{children}</h2>
+        {hint && <p className="mt-1 text-sm leading-relaxed text-mist">{hint}</p>}
+      </div>
+      {actions}
+    </div>
+  );
+}
+
+// A row of buttons where exactly one is chosen, such as a league filter.
+export function Toggle({ label, options, value, onChange, size = "md" }) {
+  return (
+    <div role="group" aria-label={label}
+         className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-white/8 bg-pitch-900/60 p-1">
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button key={o.value} type="button" aria-pressed={on} onClick={() => onChange(o.value)}
+                  className={cx("inline-flex items-center gap-1.5 rounded-lg font-semibold transition-colors",
+                                size === "sm" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm",
+                                on ? "bg-turf text-pitch-950" : "text-mist hover:bg-white/6 hover:text-chalk")}>
+            {o.label}
+            {o.count != null && (
+              <span className={cx("tabular text-xs", on ? "text-pitch-950/70" : "text-fog")}>{o.count}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function SearchBox({ label, value, onChange, placeholder }) {
+  return (
+    <div className="relative w-full sm:max-w-xs">
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fog" aria-hidden />
+      <input type="search" aria-label={label} value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)}
+             className="w-full rounded-xl border border-white/10 bg-pitch-900/70 py-2.5 pl-9 pr-3 text-sm text-chalk placeholder:text-fog hover:border-white/20 focus:border-turf/60" />
+    </div>
+  );
+}
+
+export function BackLink({ to, children }) {
+  return (
+    <Link to={to} className="inline-flex items-center gap-1.5 text-sm font-semibold text-mist transition-colors hover:text-chalk">
+      <ArrowLeft className="size-4" aria-hidden /> {children}
+    </Link>
   );
 }
 

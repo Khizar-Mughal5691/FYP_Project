@@ -21,18 +21,39 @@ def _get(path, tries=5):
             time.sleep(2 ** attempt)
 
 
-def _save_events(match_id):
-    target = RAW_DIR / "events" / f"{match_id}.json.gz"
+def _save(kind, match_id):
+    """Save one match's file of the given kind ("events" or "lineups"), gzipped."""
+    target = RAW_DIR / kind / f"{match_id}.json.gz"
     if target.exists():
         return
     tmp = target.with_suffix(".tmp")
-    tmp.write_bytes(gzip.compress(_get(f"events/{match_id}.json"), compresslevel=6))
+    tmp.write_bytes(gzip.compress(_get(f"{kind}/{match_id}.json"), compresslevel=6))
     tmp.replace(target)
 
 
+def _save_all(kind, match_ids, workers, progress):
+    (RAW_DIR / kind).mkdir(parents=True, exist_ok=True)
+    failed = []
+    with ThreadPoolExecutor(workers) as pool:
+        futures = {pool.submit(_save, kind, mid): mid for mid in match_ids}
+        for done, future in enumerate(as_completed(futures), 1):
+            try:
+                future.result()
+            except Exception as e:
+                failed.append((futures[future], str(e)))
+            if done % 250 == 0:
+                progress(f"{kind}: {done}/{len(match_ids)} matches")
+    if failed:
+        raise RuntimeError(f"{len(failed)} {kind} downloads failed, first: {failed[0]}")
+
+
+def download_lineups(match_ids, workers=8, progress=print):
+    """Lineup files: each player's nickname and shirt number, used only to label players."""
+    _save_all("lineups", match_ids, workers, progress)
+
+
 def download(workers=8, progress=print):
-    """Fetch match lists and event files. Returns {league: number of matches}."""
-    (RAW_DIR / "events").mkdir(parents=True, exist_ok=True)
+    """Fetch match lists, event files and lineup files. Returns {league: number of matches}."""
     (RAW_DIR / "matches").mkdir(parents=True, exist_ok=True)
     competitions = json.loads(_get("competitions.json"))
     counts, match_ids = {}, []
@@ -46,18 +67,8 @@ def download(workers=8, progress=print):
         counts[league] = len(matches)
         match_ids += [m["match_id"] for m in matches]
 
-    failed = []
-    with ThreadPoolExecutor(workers) as pool:
-        futures = {pool.submit(_save_events, mid): mid for mid in match_ids}
-        for done, future in enumerate(as_completed(futures), 1):
-            try:
-                future.result()
-            except Exception as e:
-                failed.append((futures[future], str(e)))
-            if done % 100 == 0:
-                progress(f"{done}/{len(match_ids)} matches")
-    if failed:
-        raise RuntimeError(f"{len(failed)} downloads failed, first: {failed[0]}")
+    _save_all("events", match_ids, workers, progress)
+    download_lineups(match_ids, workers, progress)
     return counts
 
 

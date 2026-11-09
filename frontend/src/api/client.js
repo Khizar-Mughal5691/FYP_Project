@@ -36,10 +36,17 @@ async function request(path, { method = "GET", body } = {}) {
   return data;
 }
 
+// "?search=messi&limit=60" from {search: "messi", limit: 60}, leaving out empty values.
+function query(params = {}) {
+  const pairs = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "");
+  return pairs.length ? `?${new URLSearchParams(pairs)}` : "";
+}
+
 export const api = {
   health: () => request("/health/"),
-  teams: (league) => request(`/teams/${league ? `?league=${encodeURIComponent(league)}` : ""}`),
+  teams: (league) => request(`/teams/${query({ league })}`),
   team: (id) => request(`/teams/${encodeURIComponent(id)}/`),
+  players: (params) => request(`/players/${query(params)}`),
   player: (id) => request(`/players/${encodeURIComponent(id)}/`),
   simulate: (body) => request("/simulations/", { method: "POST", body }),
 };

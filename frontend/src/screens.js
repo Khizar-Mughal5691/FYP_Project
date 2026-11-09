@@ -1,7 +1,7 @@
 // Every screen of the application in one place: the menu, the routes and the "coming soon" pages
 // are all built from this list. It follows docs/frontend-screens.md.
 import {
-  BarChart3, Bookmark, FlaskConical, House, Info, Play, Shield, SlidersHorizontal, Swords, UsersRound,
+  BarChart3, Bookmark, FlaskConical, House, Info, Play, Shield, SlidersHorizontal, Swords, UserRoundSearch, UsersRound,
 } from "lucide-react";
 
 export const GROUPS = ["Overview", "Explore", "Simulate", "Plan", "Analyse", "Project"];
@@ -15,14 +15,12 @@ export const SCREENS = [
   {
     path: "/teams", title: "Teams", group: "Explore", icon: Shield, batch: 2,
     module: "Player Dataset Processing",
-    description: "All 80 teams of the 2015/16 Premier League, La Liga, Serie A and Ligue 1.",
-    features: ["Filter by league", "Search by name", "Open any team's profile"],
+    description: "All 80 teams of the 2015/16 Premier League, La Liga, Serie A and Ligue 1, each with a profile.",
   },
   {
-    path: "/players", title: "Players", group: "Explore", icon: UsersRound, batch: 2,
+    path: "/players", title: "Players", group: "Explore", icon: UserRoundSearch, batch: 2,
     module: "Player Behavioural Modelling",
     description: "How each player behaves on the ball: their action mix, involvement and touch map.",
-    features: ["Action mix against the position average", "Touch map heatmap on a pitch", "Decisions per match"],
   },
   {
     path: "/simulate", title: "Match simulator", group: "Simulate", icon: Play, batch: 3,
@@ -73,4 +71,4 @@ export const SCREENS = [
   },
 ];
 
-export const BUILT_IN_BATCH = 1;   // screens from later batches show a "coming soon" page for now
+export const BUILT_IN_BATCH = 2;   // screens from later batches show a "coming soon" page for now

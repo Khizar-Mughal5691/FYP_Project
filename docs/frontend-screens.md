@@ -11,7 +11,7 @@ Each screen belongs to one of the proposal's eight modules, which helps Chapter 
 | 1 | Home | Visualization & Interface | Live: `GET /api/health/` | What Meta-Fut A.I does; quick links; the StatsBomb data credit |
 | 2 | Teams | Player Dataset Processing | Live: `GET /api/teams/?league=` | League filter, list of teams; click opens the team profile |
 | 3 | Team profile | Player Behavioural Modelling | Live: `GET /api/teams/{team}/` | Eight profile numbers as bars against the league average, with rank out of 80; usual eleven on a pitch; squad table |
-| 4 | Player profile | Player Behavioural Modelling | Live: `GET /api/players/{id}/` | Action mix against the position average; decisions per match; touch map as a 6 by 4 heatmap on a pitch |
+| 4 | Player profile | Player Behavioural Modelling | Live: `GET /api/players/` (finder) and `GET /api/players/{id}/` | Find a player by name, league and position; action mix against the position average; decisions per match; touch map as a 6 by 4 heatmap on a pitch |
 | 5 | Match simulator | Event-Driven Simulation, Scenario Rollout | Live: `POST /api/simulations/` | Pick home and away teams and the number of rollouts; Run button with a loading state |
 | 6 | Simulation results | Outcome Analysis | Live: same response | Win, draw and loss bar; average goals, xG, shots, possession; top scorelines; likely scorers; sample match goals and stats |
 | 7 | Lineup editor | Tactical Input | Live: squads from screen 3, sent as `home_xi`/`away_xi` | Choose 11 players and their positions, exactly one GK; simulate with them |

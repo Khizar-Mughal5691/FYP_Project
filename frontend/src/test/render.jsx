@@ -15,11 +15,13 @@ export function renderAt(path) {
   );
 }
 
-// fetch answers from a table of path -> JSON body; anything else is a 404.
+// fetch answers from a table of path -> JSON body, or path -> function of the URL that returns the
+// body (to answer by query string); anything else is a 404.
 export function fakeApi(responses) {
   const fetch = vi.fn(async (url) => {
-    const path = new URL(url).pathname.replace(/^\/api/, "");
-    const body = responses[path];
+    const address = new URL(url);
+    const entry = responses[address.pathname.replace(/^\/api/, "")];
+    const body = typeof entry === "function" ? entry(address) : entry;
     return new Response(JSON.stringify(body ?? { error: "not found" }), { status: body ? 200 : 404 });
   });
   vi.stubGlobal("fetch", fetch);

@@ -23,6 +23,8 @@ from metafut.sim.engine import Simulator, player_name
 
 DEFAULT_ROLLOUTS = 200
 MAX_ROLLOUTS = 1000
+DEFAULT_PLAYERS = 60
+MAX_PLAYERS = 200
 TOP_SCORELINES = 10
 TOP_SCORERS = 5
 DATA_CREDIT = "Data: StatsBomb open data, 2015/16 season, used for non-commercial research."
@@ -60,6 +62,20 @@ def simulator():
     return Simulator()
 
 
+def _labels():
+    """Nicknames and shirt numbers from players.parquet. Without that file (built by
+    scripts/02_build_tables.py), players are shown by their full names and without numbers."""
+    path = TABLE_DIR / "players.parquet"
+    if not path.exists():
+        return {}, {}
+    labels = pd.read_parquet(path)
+    named = labels.dropna(subset=["nickname"]).drop_duplicates("player_id")
+    nicknames = {int(p): n for p, n in zip(named.player_id, named.nickname)}
+    numbered = labels.dropna(subset=["number"])
+    numbers = {(t, int(p)): int(n) for t, p, n in zip(numbered.team, numbered.player_id, numbered.number)}
+    return nicknames, numbers
+
+
 @lru_cache(maxsize=1)
 def catalog():
     """Names, leagues, squads and appearance counts, loaded once per server process."""
@@ -81,11 +97,33 @@ def catalog():
 
     usage = (decisions.groupby(["team", "player_id"])
              .agg(decisions=("match_id", "size"), matches=("match_id", "nunique")).reset_index())
-    starts = (lineups[lineups.match_id.isin(train_ids)].groupby(["team", "player_id"]).match_id.nunique()
-              .rename("starts").reset_index())
+    train_lineups = lineups[lineups.match_id.isin(train_ids)]
+    starts = train_lineups.groupby(["team", "player_id"]).match_id.nunique().rename("starts").reset_index()
     usage = usage.merge(starts, on=["team", "player_id"], how="left").fillna({"starts": 0})
     usage["starts"] = usage.starts.astype(int)
+
+    # Each player's usual role in a team ("Left Center Back"), from the elevens they started in.
+    roles = train_lineups.groupby(["team", "player_id"]).position_name.agg(lambda s: s.mode().iloc[0])
+    roles = {(t, int(p)): r for (t, p), r in roles.items()}
+    nicknames, numbers = _labels()
+
+    # One row per player for the player finder: totals, and the team they played most for.
+    players = (usage.sort_values("decisions", ascending=False).groupby("player_id")
+               .agg(team=("team", "first"), decisions=("decisions", "sum"),
+                    matches=("matches", "sum"), starts=("starts", "sum"))
+               .reset_index())
+    players = players[players.player_id.isin(list(profiles.player_lookup))]
+    rows = [profiles.player_lookup[p] for p in players.player_id]
+    players = players.assign(
+        position=[POSITIONS[profiles.player_position[r]] for r in rows],
+        league=players.team.map(teams.set_index("name").league),
+        search=[slugify(f"{profiles.player_names[r]} {nicknames.get(int(p), '')}")
+                for r, p in zip(rows, players.player_id)],
+        search_short=[slugify(nicknames.get(int(p), profiles.player_names[r])) for r, p in zip(rows, players.player_id)],
+    ).sort_values(["decisions", "player_id"], ascending=[False, True])
+
     return dict(matches=matches, lineups=lineups, train_ids=train_ids, teams=teams, usage=usage,
+                players=players, roles=roles, nicknames=nicknames, numbers=numbers,
                 by_id=dict(zip(teams.id, teams.name)))
 
 
@@ -107,11 +145,17 @@ def _team_ref(name):
     return dict(id=t.id, name=name, league=t.league, league_name=LEAGUE_NAMES[t.league])
 
 
-def _player_ref(player_id, position=None):
-    P = simulator().profiles
-    row = P.player_lookup.get(int(player_id))
-    pos = position or (POSITIONS[P.player_position[row]] if row is not None else None)
-    return dict(player_id=int(player_id), name=P.player_names[row] if row is not None else None, position=pos)
+def _player_ref(player_id, position=None, team=None):
+    """A player as the API shows them. Given a team, also their shirt number and usual role there."""
+    P, c = simulator().profiles, catalog()
+    pid = int(player_id)
+    row = P.player_lookup.get(pid)
+    name = P.player_names[row] if row is not None else None
+    ref = dict(player_id=pid, name=name, short_name=c["nicknames"].get(pid, name),
+               position=position or (POSITIONS[P.player_position[row]] if row is not None else None))
+    if team is not None:
+        ref.update(number=c["numbers"].get((team, pid)), role=c["roles"].get((team, pid)))
+    return ref
 
 
 def _round(x, digits=4):
@@ -157,19 +201,28 @@ def _profile_numbers(name):
 def _squad(name):
     usage = catalog()["usage"]
     rows = usage[usage.team == name].sort_values(["starts", "decisions"], ascending=False)
-    return [dict(**_player_ref(r.player_id), starts=int(r.starts), matches=int(r.matches),
+    return [dict(**_player_ref(r.player_id, team=name), starts=int(r.starts), matches=int(r.matches),
                  decisions=int(r.decisions)) for r in rows.itertuples()]
 
 
 def usual_xi(name):
     c = catalog()
-    return [_player_ref(pid, pos) for pid, pos in fixture_tools.usual_xi(c["lineups"], name, c["train_ids"])]
+    return [_player_ref(pid, pos, team=name)
+            for pid, pos in fixture_tools.usual_xi(c["lineups"], name, c["train_ids"])]
+
+
+def _formation(name):
+    """The team's most used formation in the training matches, such as "4-2-3-1"."""
+    c = catalog()
+    lu = c["lineups"]
+    used = lu[(lu.team == name) & lu.match_id.isin(c["train_ids"])].drop_duplicates("match_id").formation.dropna()
+    return "-".join(str(int(used.mode().iloc[0]))) if len(used) else None
 
 
 def team_detail(team):
     name = _team_name(team)
-    return dict(**_team_ref(name), profile=_profile_numbers(name), usual_xi=usual_xi(name),
-                squad=_squad(name), credit=DATA_CREDIT)
+    return dict(**_team_ref(name), formation=_formation(name), profile=_profile_numbers(name),
+                usual_xi=usual_xi(name), squad=_squad(name), credit=DATA_CREDIT)
 
 
 def player_detail(player_id):
@@ -180,11 +233,14 @@ def player_detail(player_id):
         raise NotFound(f"no player with id {player_id}") from None
     position = int(P.player_position[row])
     average = int(P.average_player(position))
-    usage = catalog()["usage"]
-    teams = usage[usage.player_id == int(player_id)].sort_values("decisions", ascending=False)
+    c = catalog()
+    pid = int(player_id)
+    usage = c["usage"]
+    teams = usage[usage.player_id == pid].sort_values("decisions", ascending=False)
     return dict(
         **_player_ref(player_id),
-        teams=[dict(**_team_ref(t.team), starts=int(t.starts), matches=int(t.matches), decisions=int(t.decisions))
+        teams=[dict(**_team_ref(t.team), number=c["numbers"].get((t.team, pid)), role=c["roles"].get((t.team, pid)),
+                    starts=int(t.starts), matches=int(t.matches), decisions=int(t.decisions))
                for t in teams.itertuples()],
         actions=[dict(action=a, share=_round(P.player_shares[row, j]),
                       position_average=_round(P.player_shares[average, j])) for j, a in enumerate(ACTIONS)],
@@ -197,6 +253,45 @@ def player_detail(player_id):
             values=[_round(v) for v in P.player_touch[row]],
             position_average=[_round(v) for v in P.player_touch[average]]),
         credit=DATA_CREDIT)
+
+
+def player_list(search=None, league=None, team=None, position=None, limit=DEFAULT_PLAYERS):
+    """Find players, most involved first. Every filter is optional; `count` is the number found
+    before `limit` is applied."""
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        raise BadRequest("limit must be a whole number") from None
+    if not 1 <= limit <= MAX_PLAYERS:
+        raise BadRequest(f"limit must be between 1 and {MAX_PLAYERS}")
+    c = catalog()
+    found = c["players"]
+    if league:
+        if league not in LEAGUE_NAMES:
+            raise BadRequest(f"unknown league '{league}'. Use one of: {', '.join(LEAGUE_NAMES)}")
+        found = found[found.league == league]
+    if team:
+        name = _team_name(team)
+        found = found[found.player_id.isin(c["usage"].loc[c["usage"].team == name, "player_id"])]
+    if position:
+        position = position.upper()
+        if position not in POSITION_ID:
+            raise BadRequest(f"position must be one of {', '.join(POSITIONS)}")
+        found = found[found.position == position]
+    if search and slugify(search):
+        # Players known by the searched name ("Luis Suárez") come before players who only have
+        # it in their full name ("Francisco Román Alarcón Suárez", known as Isco).
+        wanted = slugify(search)
+        found = found[found.search.str.contains(wanted, regex=False)]
+        known_as = found.search_short.str.contains(wanted, regex=False)
+        found = found.assign(known_as=known_as).sort_values(
+            ["known_as", "decisions", "player_id"], ascending=[False, False, True])
+    P = simulator().profiles
+    results = [dict(**_player_ref(r.player_id, team=r.team), team=_team_ref(r.team), starts=int(r.starts),
+                    matches=int(r.matches), decisions=int(r.decisions),
+                    decisions_per_match=_round(P.player_weight[P.player_lookup[r.player_id]], 2))
+               for r in found.head(limit).itertuples()]
+    return dict(count=len(found), results=results)
 
 
 # ------------------------------------------------------------------ feature 2: simulation
@@ -222,13 +317,14 @@ def _parse_xi(xi, side):
     return pairs
 
 
-def _event_row(e, fx, labels):
+def _event_row(e, fx, labels, nicknames):
     P = simulator().profiles
     row = int(fx.players[0, e["team"], e["slot"]])
+    pid = int(P.player_ids[row]) if row < P.n_players else None
+    name = player_name(P, row)
     t = int(e["t"])
     return dict(minute=t // 60 + 1, second=t % 60, team=labels[e["team"]],
-                player_id=int(P.player_ids[row]) if row < P.n_players else None,
-                player=player_name(P, row), position=POSITIONS[e["position"]],
+                player_id=pid, player=name, short_name=nicknames.get(pid, name), position=POSITIONS[e["position"]],
                 action=ACTIONS[e["action"]], result=RESULTS[e["result"]],
                 x=_round(e["x"], 1), y=_round(e["y"], 1), end_x=_round(e["end_x"], 1), end_y=_round(e["end_y"], 1),
                 under_pressure=bool(e["pressure"]))
@@ -279,7 +375,8 @@ def simulate(home, away, rollouts=DEFAULT_ROLLOUTS, seed=None, home_xi=None, awa
                                possession=_round(possession[:, s].mean(), 3))
                for s in (0, 1)}
 
-    lineups = {labels[s]: [dict(**_player_ref(pid, pos), slot=k) for k, (pid, pos) in enumerate(xis[s])]
+    names = (home_name, away_name)
+    lineups = {labels[s]: [dict(**_player_ref(pid, pos, team=names[s]), slot=k) for k, (pid, pos) in enumerate(xis[s])]
                for s in (0, 1)}
     scorers = [dict(team=labels[s], **lineups[labels[s]][k],
                     goals_per_match=_round(r.player_goals[:, s, k].mean(), 3),
@@ -287,11 +384,11 @@ def simulate(home, away, rollouts=DEFAULT_ROLLOUTS, seed=None, home_xi=None, awa
                for s in (0, 1) for k in range(fixture_tools.XI)]
     scorers = sorted(scorers, key=lambda p: -p["goals_per_match"])[:TOP_SCORERS]
 
-    events = [_event_row(e, fx, labels) for e in r.events]
+    events = [_event_row(e, fx, labels, c["nicknames"]) for e in r.events]
     sample = dict(
         score=dict(home=int(g[0, 0]), away=int(g[0, 1])),
-        goals=[dict(minute=e["minute"], team=e["team"], player_id=e["player_id"], player=e["player"])
-               for e in events if e["result"] == "shot_goal"],
+        goals=[dict(minute=e["minute"], team=e["team"], player_id=e["player_id"], player=e["player"],
+                    short_name=e["short_name"]) for e in events if e["result"] == "shot_goal"],
         stats={labels[s]: dict(shots=int(r.shots[0, s]), xg=_round(r.xg[0, s], 2), passes=int(r.passes[0, s]),
                                completed=int(r.completed[0, s]), possession=_round(possession[0, s], 3))
                for s in (0, 1)})

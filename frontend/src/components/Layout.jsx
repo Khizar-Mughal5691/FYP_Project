@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, useLocation, useOutlet } from "react-router";
+import { NavLink, ScrollRestoration, useLocation, useOutlet } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Menu, X } from "lucide-react";
 import { GROUPS, SCREENS } from "../screens";
@@ -56,6 +56,10 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
+      {/* A new page starts at the top; going back returns to where the previous page was left.
+          Every page opened by typing its address shares the key "default", so those are told
+          apart by their path; otherwise a new address would open at an old scroll position. */}
+      <ScrollRestoration getKey={(location) => (location.key === "default" ? location.pathname : location.key)} />
       {/* Sidebar on large screens */}
       <aside className="sticky top-0 hidden h-screen flex-col gap-8 overflow-y-auto border-r border-white/6 bg-pitch-900/70 px-4 py-6 backdrop-blur lg:flex">
         <div className="px-2"><Logo /></div>

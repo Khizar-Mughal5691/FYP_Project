@@ -7,8 +7,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { routes } from "./routes";
 import "./index.css";
 
+// Try a failed request once more, unless the API answered that the request itself is wrong
+// (for example an unknown team): asking again would get the same answer.
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      retry: (failures, error) => failures < 1 && !(error?.status >= 400 && error?.status < 500),
+      refetchOnWindowFocus: false,
+    },
+  },
 });
 
 createRoot(document.getElementById("root")).render(

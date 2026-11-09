@@ -29,12 +29,20 @@ Data and models are saved in `~/metafut-data`. Set `METAFUT_DATA` to use another
 ## Build everything
 
 ```bash
-python scripts/01_download.py       # download about 1,500 matches and four odds files
-python scripts/02_build_tables.py   # build the decisions, matches and lineups tables
+python scripts/01_download.py       # download about 1,500 matches (events and lineups) and four odds files
+python scripts/02_build_tables.py   # build the decisions, matches, lineups and players tables
 python scripts/03_train_models.py   # train models and profiles, calibrate, write reports/model_report.json
 python scripts/04_check_gates.py    # gates G0 (pass model) and G1 (league-average simulation)
 python scripts/05_check_g2.py       # gate G2: forecasts and team style on validation matches
 python -m pytest                    # run the tests
+```
+
+Data built before 9 November 2026 has no players table, so the interface shows full names without
+shirt numbers. To add it without rebuilding everything:
+
+```bash
+python scripts/01_download.py       # downloads only the missing lineup files (about 5 minutes)
+python -c "from metafut.data.actions import build_players; build_players()"
 ```
 
 ## Try it

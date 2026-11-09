@@ -186,3 +186,34 @@ def build_tables(progress=print):
     pd.DataFrame(match_rows).to_parquet(TABLE_DIR / "matches.parquet", index=False)
     pd.DataFrame(lineup_rows).to_parquet(TABLE_DIR / "lineups.parquet", index=False)
     return table
+
+
+def _most_common(values):
+    values = values.dropna()
+    return values.mode().iloc[0] if len(values) else None
+
+
+def build_players(progress=print):
+    """Write players.parquet: each player's full name, nickname and shirt number for each team.
+
+    It only labels players in the interface ("Lionel Messi", number 10). The models never read it.
+    """
+    rows = []
+    for league in LEAGUES:
+        matches = json.loads((RAW_DIR / "matches" / f"{league}.json").read_text(encoding="utf-8"))
+        for m in matches:
+            with gzip.open(RAW_DIR / "lineups" / f"{m['match_id']}.json.gz", "rt", encoding="utf-8") as f:
+                lineup = json.load(f)
+            names = canonical_teams([{"team": {"name": t["team_name"]}} for t in lineup],
+                                    m["home_team"]["home_team_name"], m["away_team"]["away_team_name"])
+            for t in lineup:
+                for p in t["lineup"]:
+                    rows.append(dict(team=names[t["team_name"]], player_id=p["player_id"], name=p["player_name"],
+                                     nickname=p.get("player_nickname"), number=p.get("jersey_number")))
+        progress(f"{league}: {len(matches)} lineups")
+    players = (pd.DataFrame(rows).groupby(["team", "player_id"])
+               .agg(name=("name", "first"), nickname=("nickname", _most_common), number=("number", _most_common))
+               .reset_index())
+    players["number"] = players.number.astype("Int64")
+    players.to_parquet(TABLE_DIR / "players.parquet", index=False)
+    return players
