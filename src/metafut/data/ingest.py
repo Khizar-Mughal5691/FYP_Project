@@ -59,3 +59,21 @@ def download(workers=8, progress=print):
     if failed:
         raise RuntimeError(f"{len(failed)} downloads failed, first: {failed[0]}")
     return counts
+
+
+ODDS_URL = "https://www.football-data.co.uk/mmz4281/1516/{code}.csv"
+
+
+def download_odds(codes):
+    """Results and closing bookmaker odds for 2015/16 from football-data.co.uk, one small CSV per
+    league. Used only as a benchmark for match forecasts. `codes` maps league to file code."""
+    (RAW_DIR / "odds").mkdir(parents=True, exist_ok=True)
+    sizes = {}
+    for league, code in codes.items():
+        target = RAW_DIR / "odds" / f"{league}.csv"
+        if not target.exists():
+            r = requests.get(ODDS_URL.format(code=code), timeout=60)
+            r.raise_for_status()
+            target.write_bytes(r.content)
+        sizes[league] = target.stat().st_size
+    return sizes

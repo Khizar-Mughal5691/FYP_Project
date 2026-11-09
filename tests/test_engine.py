@@ -2,9 +2,9 @@
 import numpy as np
 import pytest
 
-from metafut.config import MODEL_DIR
+from metafut.config import BUNDLE, MODEL_DIR
 
-pytestmark = pytest.mark.skipif(not (MODEL_DIR / "simulator_v0.joblib").exists(),
+pytestmark = pytest.mark.skipif(not (MODEL_DIR / BUNDLE).exists(),
                                 reason="run scripts/03_train_models.py first")
 
 
@@ -43,3 +43,27 @@ def test_counts_are_consistent(sim):
 def test_every_event_stays_on_the_pitch(sim):
     r = sim.run(1, seed=5, record_first=True)
     assert all(0 <= e["x"] <= 120 and 0 <= e["y"] <= 80 for e in r.events)
+
+
+def test_player_totals_add_up_to_team_totals(sim):
+    from metafut.sim import fixtures as F
+    r = sim.run(seed=6, fixtures=F.fixture(sim.profiles, "Barcelona", "Real Madrid").repeat(10))
+    assert (r.player_goals.sum(axis=2) == r.goals).all()
+    assert (r.player_shots.sum(axis=2) == r.shots).all()
+    assert (r.player_passes.sum(axis=2) == r.passes).all()
+    assert (r.player_decisions.sum(axis=2) == r.decisions).all()
+
+
+def test_a_stronger_team_wins_more_often(sim):
+    from metafut.sim import fixtures as F
+    # Barcelona won La Liga 2015/16; Levante finished last.
+    r = sim.run(seed=8, fixtures=F.fixture(sim.profiles, "Barcelona", "Levante UD").repeat(200))
+    home, away = (r.goals[:, 0] > r.goals[:, 1]).mean(), (r.goals[:, 0] < r.goals[:, 1]).mean()
+    assert home > 2 * away
+    assert r.passes[:, 0].mean() > r.passes[:, 1].mean()
+
+
+def test_trace_records_every_decision(sim):
+    r = sim.run(3, seed=9, trace=True)
+    assert len(r.trace["match"]) == r.decisions.sum()
+    assert set(np.unique(r.trace["match"])) == {0, 1, 2}

@@ -3,12 +3,16 @@
 A context-aware football match simulator learned from event data. Final Year Project,
 Department of Computer Science and IT, The University of Lahore. Supervisor: Sir Ahmad Zia.
 
-The simulator generates a match one on-ball decision at a time: it reads the game state, chooses
-an action, resolves the outcome with trained models, and draws what happens next from real
-examples of the same situation. Running many matches together gives probabilities for a scenario.
+The simulator generates a match one on-ball decision at a time: it reads the game state, lets the
+player on the ball choose an action, resolves the outcome with trained models, and draws what
+happens next from real examples of the same situation. Every team and player has a profile learned
+from real matches, so Barcelona plays differently from Granada, and a winger differently from a
+centre-back. Running a fixture many times gives probabilities for its outcome.
 
 Data: [StatsBomb open data](https://github.com/statsbomb/open-data), 2015/16 Premier League,
 La Liga, Serie A and Ligue 1. Data provided by StatsBomb, for non-commercial research use.
+Bookmaker odds from [football-data.co.uk](https://www.football-data.co.uk) are used only as a
+benchmark for match forecasts.
 
 ## Setup
 
@@ -25,12 +29,19 @@ Data and models are saved in `~/metafut-data`. Set `METAFUT_DATA` to use another
 ## Build everything
 
 ```bash
-python scripts/01_download.py       # download about 1,500 matches
+python scripts/01_download.py       # download about 1,500 matches and four odds files
 python scripts/02_build_tables.py   # build the decisions, matches and lineups tables
-python scripts/03_train_models.py   # train models, write reports/model_report.json
-python scripts/04_check_gates.py    # check gates G0 and G1
-python scripts/simulate_match.py    # simulate one match and print a summary
+python scripts/03_train_models.py   # train models and profiles, calibrate, write reports/model_report.json
+python scripts/04_check_gates.py    # gates G0 (pass model) and G1 (league-average simulation)
+python scripts/05_check_g2.py       # gate G2: forecasts and team style on validation matches
 python -m pytest                    # run the tests
+```
+
+## Try it
+
+```bash
+python scripts/simulate_match.py "Barcelona" "Real Madrid"
+python scripts/simulate_match.py --teams
 ```
 
 ## Layout
@@ -38,10 +49,12 @@ python -m pytest                    # run the tests
 | Path | What it holds |
 |---|---|
 | `src/metafut/data` | Download and table building |
-| `src/metafut/models` | Features, sampling pools, model training |
-| `src/metafut/sim` | The batched match simulator |
-| `scripts` | Numbered steps to rebuild everything |
+| `src/metafut/models` | Features, sampling pools, team and player profiles, model training |
+| `src/metafut/sim` | The batched match simulator, fixtures (who plays) and calibration |
+| `src/metafut/eval` | Forecast scoring and baselines (Dixon-Coles, bookmaker odds) |
+| `scripts` | Numbered steps to rebuild everything, plus a match demo |
 | `reports` | Saved model and gate results |
+| `docs/modules` | One note per module for the thesis |
 | `tests` | Automated tests |
 
 ## Evaluation rules

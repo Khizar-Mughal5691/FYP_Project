@@ -1,5 +1,28 @@
 {
   "pass_model": {
+    "logloss": 0.3539,
+    "auc": 0.8801,
+    "brier": 0.1131,
+    "ece": 0.0038,
+    "n": 293684,
+    "forward_gap": -0.0028,
+    "backward_gap": 0.0012,
+    "long_gap": -0.027,
+    "baseline_logloss": 0.542,
+    "accuracy": 0.8366
+  },
+  "pass_other_league": {
+    "premier_league": 0.8754,
+    "la_liga": 0.8758,
+    "serie_a": 0.8858,
+    "ligue_1": 0.8761
+  },
+  "action_model": {
+    "logloss": 0.4411,
+    "baseline_logloss": 1.042,
+    "accuracy": 0.8234
+  },
+  "pass_model_without_profiles": {
     "logloss": 0.3545,
     "auc": 0.8796,
     "brier": 0.1133,
@@ -11,25 +34,19 @@
     "baseline_logloss": 0.542,
     "accuracy": 0.8366
   },
-  "pass_other_league": {
-    "premier_league": 0.8759,
-    "la_liga": 0.8757,
-    "serie_a": 0.8855,
-    "ligue_1": 0.8768
-  },
-  "action_model": {
+  "action_model_without_profiles": {
     "logloss": 0.4423,
     "baseline_logloss": 1.042,
     "accuracy": 0.8213
   },
   "shot_model": {
-    "logloss": 0.2722,
-    "auc": 0.7883,
-    "brier": 0.0776,
-    "ece": 0.005,
+    "logloss": 0.2717,
+    "auc": 0.7893,
+    "brier": 0.0775,
+    "ece": 0.0044,
     "n": 7536,
     "goals": 765,
-    "predicted_goals": 775.7,
+    "predicted_goals": 777.6,
     "statsbomb_xg_auc": 0.8222,
     "statsbomb_xg_logloss": 0.2558
   },
@@ -42,5 +59,25 @@
     "carries": 733.4517724649629,
     "dribbles": 34.58697444352844,
     "decisions": 1871.7873042044519
-  }
+  },
+  "calibration": [
+    {
+      "step": 0,
+      "shot_scale": 1.0,
+      "simulated_shots": 27.82,
+      "real_shots": 25.11
+    },
+    {
+      "step": 1,
+      "shot_scale": 0.9025,
+      "simulated_shots": 26.27,
+      "real_shots": 25.11
+    },
+    {
+      "step": 2,
+      "shot_scale": 0.8626,
+      "simulated_shots": 25.75,
+      "real_shots": 25.11
+    }
+  ]
 }

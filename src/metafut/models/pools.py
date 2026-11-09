@@ -48,11 +48,12 @@ class Pool:
         return out
 
 
-def rate_table(keys, hits, n_keys, prior=20.0):
-    """Smoothed probability per key, pulled toward the overall rate where examples are few."""
+def rate_table(keys, hits, n_keys, prior=20.0, base=None):
+    """Smoothed probability per key, pulled toward `base` (one rate per key, for example the rate
+    of a coarser key) or, without it, toward the overall rate where examples are few."""
     keys = np.asarray(keys, dtype=np.int64)
     hits = np.asarray(hits, dtype=np.float64)
-    mean = hits.mean()
+    mean = hits.mean() if base is None else np.asarray(base, dtype=np.float64)
     total = np.bincount(keys, weights=hits, minlength=n_keys)
     count = np.bincount(keys, minlength=n_keys)
     return ((total + prior * mean) / (count + prior)).astype(np.float32)

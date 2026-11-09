@@ -38,7 +38,7 @@ def test_results_and_phases():
               event(2, "Pass", "A", second=5, **{"pass": passed((80, 40), "Incomplete")}),
               event(3, "Pass", "B", second=9, **{"pass": passed((80, 40), "Out")}),
               event(4, "Pass", "B", second=20, **{"pass": passed((80, 40), "Injury Clearance")})]
-    d = match_decisions(events, 1, "A")
+    d = match_decisions(events, 1, "A", "B")
     assert list(d.result) == ["pass_complete", "pass_incomplete", "pass_out", "pass_out"]
     assert list(d.phase) == ["kick_off", "open", "open", "open"]
     assert list(d.label_valid) == [True, True, True, False]
@@ -50,7 +50,7 @@ def test_previous_and_next_are_linked():
               event(2, "Carry", "A", second=3, location=(70, 40), carry=dict(end_location=[75, 40])),
               event(3, "Dispossessed", "A", second=6, location=(75, 40)),
               event(4, "Pass", "B", second=8, location=(45, 40), **{"pass": passed((50, 40))})]
-    d = match_decisions(events, 1, "A")
+    d = match_decisions(events, 1, "A", "B")
     assert list(d.prev_result) == ["start", "pass_complete", "carry", "loss"]
     assert list(d.prev_same_team) == [0, 1, 1, 0]
     assert list(d.next_same_team)[:3] == [1, 1, 0]
@@ -64,7 +64,7 @@ def test_score_is_tracked_before_each_decision():
     events = [event(1, "Shot", "A", shot=GOAL),
               event(2, "Pass", "B", second=30, **{"pass": passed((60, 50))}),
               event(3, "Pass", "A", second=40, **{"pass": passed((60, 50))})]
-    d = match_decisions(events, 1, "A")
+    d = match_decisions(events, 1, "A", "B")
     assert list(d.score_diff) == [0, -1, 1]
     assert d.result.iloc[0] == "shot_goal"
 
@@ -73,7 +73,7 @@ def test_second_half_starts_fresh_and_penalties_are_marked():
     events = [event(1, "Pass", "A", **{"pass": passed((70, 40))}),
               event(2, "Shot", "A", minute=46, period=2, location=(108, 40),
                     shot=dict(outcome=dict(name="Saved"), type=dict(name="Penalty")))]
-    d = match_decisions(events, 1, "A")
+    d = match_decisions(events, 1, "A", "B")
     assert d.prev_result.iloc[1] == "start"
     assert d.has_next.iloc[0] == 0
     assert d.phase.iloc[1] == "penalty"
@@ -84,5 +84,32 @@ def test_events_without_location_and_shootouts_are_ignored():
     events = [event(1, "Pass", "A", **{"pass": passed((70, 40))}),
               event(2, "Shot", "A", period=5, shot=GOAL),
               event(3, "Clearance", "B", location=None)]
-    d = match_decisions(events, 1, "A")
+    d = match_decisions(events, 1, "A", "B")
     assert len(d) == 1
+
+
+def test_team_spelled_differently_in_events_is_mapped_to_the_match_name():
+    events = [event(1, "Pass", "Marseille", **{"pass": passed((70, 40))}),
+              event(2, "Pass", "Nantes", second=4, **{"pass": passed((70, 40))})]
+    d = match_decisions(events, 1, "Olympique de Marseille", "Nantes")
+    assert list(d.team) == ["Olympique de Marseille", "Nantes"]
+    assert list(d.opp) == ["Nantes", "Olympique de Marseille"]
+    assert list(d.is_home) == [1, 0]
+
+
+def test_canonical_teams_refuses_a_third_team():
+    import pytest
+    from metafut.data.actions import canonical_teams
+    events = [event(1, "Pass", "X"), event(2, "Pass", "Y"), event(3, "Pass", "Z")]
+    with pytest.raises(ValueError):
+        canonical_teams(events, "A", "B")
+
+
+def test_next_same_player_marks_a_player_acting_again():
+    events = [event(1, "Pass", "A", **{"pass": passed((70, 40))}),
+              event(2, "Carry", "A", second=3, location=(70, 40), carry=dict(end_location=[75, 40])),
+              event(2, "Pass", "A", second=5, location=(75, 40), **{"pass": passed((80, 40))}),
+              event(4, "Pass", "B", second=8, location=(45, 40), **{"pass": passed((50, 40))})]
+    d = match_decisions(events, 1, "A", "B")
+    # Event 1 passes to player 2, who carries and then passes; then team B has the ball.
+    assert list(d.next_same_player) == [0, 1, 0, 0]

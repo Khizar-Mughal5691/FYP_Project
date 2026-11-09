@@ -10,6 +10,7 @@ DATA_DIR = Path(os.environ.get("METAFUT_DATA", Path.home() / "metafut-data"))
 RAW_DIR = DATA_DIR / "raw"
 TABLE_DIR = DATA_DIR / "tables"
 MODEL_DIR = DATA_DIR / "models"
+BUNDLE = "simulator_v1.joblib"   # models, pools and profiles the simulator loads
 REPORT_DIR = Path(__file__).resolve().parents[2] / "reports"
 
 OPEN_DATA_URL = "https://raw.githubusercontent.com/statsbomb/open-data/master/data"

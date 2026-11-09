@@ -1,0 +1,85 @@
+{
+  "g2": true,
+  "rollouts": 100,
+  "seconds": 460.6,
+  "forecasts": {
+    "simulator": {
+      "rps": 0.217,
+      "log_score": 1.0622,
+      "mean_home": 0.393,
+      "mean_draw": 0.254,
+      "rps_minus_fixed_95ci": [
+        -0.0205,
+        -0.0006
+      ],
+      "rps_minus_dixon_coles_95ci": [
+        0.0008,
+        0.0303
+      ]
+    },
+    "fixed rates": {
+      "rps": 0.228,
+      "log_score": 1.0795,
+      "mean_home": 0.432,
+      "mean_draw": 0.276
+    },
+    "Dixon-Coles": {
+      "rps": 0.2013,
+      "log_score": 1.0061,
+      "mean_home": 0.441,
+      "mean_draw": 0.267
+    },
+    "bookmaker odds": {
+      "rps": 0.1949,
+      "log_score": 0.9754,
+      "mean_home": 0.453,
+      "mean_draw": 0.261
+    }
+  },
+  "odds": "303 of 303 matches matched",
+  "style": {
+    "teams": 80,
+    "possession_team_r": 0.827,
+    "possession_match_r": 0.698,
+    "goals_for_team_r": 0.604,
+    "goals_against_team_r": 0.191
+  },
+  "league": {
+    "goals": {
+      "simulated": 2.724,
+      "real": 2.525
+    },
+    "shots": {
+      "simulated": 25.848,
+      "real": 24.871
+    },
+    "passes": {
+      "simulated": 973.215,
+      "real": 977.116
+    },
+    "completion": {
+      "simulated": 0.768,
+      "real": 0.768
+    },
+    "carries": {
+      "simulated": 731.839,
+      "real": 737.475
+    },
+    "dribbles": {
+      "simulated": 33.353,
+      "real": 34.934
+    },
+    "decisions": {
+      "simulated": 1866.876,
+      "real": 1882.122
+    },
+    "home_win": {
+      "simulated": 0.394,
+      "real": 0.426
+    },
+    "draw": {
+      "simulated": 0.253,
+      "real": 0.271
+    }
+  }
+}

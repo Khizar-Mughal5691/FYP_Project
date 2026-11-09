@@ -11,6 +11,15 @@ from metafut.config import (GOAL_X, GOAL_Y, HEIGHT_ID, PHASE_ID, PITCH_X, PITCH_
 
 ZONES_X, ZONES_Y = 12, 8
 N_ZONES = ZONES_X * ZONES_Y
+GOAL_HALF_WIDTH = 4.0  # StatsBomb units are yards; the goal is 8 yards wide
+
+# Profile columns (see models/profiles.py). TEAM_ATT describes the team on the ball, TEAM_DEF the
+# team defending against it, PLAYER_COLS the player on the ball.
+TEAM_ATT = ["att_pass", "att_shot", "att_loss"]
+TEAM_DEF = ["def_pass", "def_shot", "def_loss", "def_press"]
+PLAYER_COLS = ["p_pass", "p_carry", "p_dribble", "p_shot", "p_loss", "p_clear"]
+ACTION_PROFILE = TEAM_ATT + TEAM_DEF + PLAYER_COLS
+PASS_PROFILE = ["att_pass", "def_pass", "def_press"]
 
 
 def zone(x, y):
@@ -51,22 +60,27 @@ def _base(x, y, phase, prev, prev_same, prev_height, pressure, minute, score_dif
 
 
 ACTION_CATEGORICAL = [4, 5, 7, 12]
+N_BASE = 13                 # columns returned by _base
+ACTION_PROFILE_START = N_BASE
+PASS_PROFILE_START = N_BASE + 4
 
 
 def action_features(x, y, phase, prev, prev_same, prev_height, pressure, minute, score_diff,
-                    is_home, position):
+                    is_home, position, profile):
+    """`profile` holds the ACTION_PROFILE columns, one row per decision."""
     return np.column_stack(_base(x, y, phase, prev, prev_same, prev_height, pressure, minute,
-                                 score_diff, is_home, position)).astype(np.float32)
+                                 score_diff, is_home, position) + [profile]).astype(np.float32)
 
 
 PASS_CATEGORICAL = [4, 5, 7, 12, 16]
 
 
 def pass_features(x, y, phase, prev, prev_same, prev_height, pressure, minute, score_diff,
-                  is_home, position, angle, height):
+                  is_home, position, angle, height, profile):
+    """`profile` holds the PASS_PROFILE columns, one row per pass."""
     return np.column_stack(_base(x, y, phase, prev, prev_same, prev_height, pressure, minute,
                                  score_diff, is_home, position)
-                           + [angle, np.cos(angle), np.abs(np.sin(angle)), height]
+                           + [angle, np.cos(angle), np.abs(np.sin(angle)), height, profile]
                            ).astype(np.float32)
 
 
@@ -76,7 +90,8 @@ SHOT_CATEGORICAL = [3, 4, 5]
 def shot_features(x, y, phase, prev, prev_height, pressure):
     dist = np.hypot(GOAL_X - x, GOAL_Y - y)
     # Angle the goal mouth subtends from the shot location.
-    a = np.abs(np.arctan2(GOAL_Y + 3.66 - y, GOAL_X - x) - np.arctan2(GOAL_Y - 3.66 - y, GOAL_X - x))
+    a = np.abs(np.arctan2(GOAL_Y + GOAL_HALF_WIDTH - y, GOAL_X - x)
+               - np.arctan2(GOAL_Y - GOAL_HALF_WIDTH - y, GOAL_X - x))
     return np.column_stack([dist, a, x, phase, prev, prev_height, pressure,
                             np.abs(y - PITCH_Y / 2)]).astype(np.float32)
 
@@ -85,14 +100,15 @@ def action_matrix(d):
     return action_features(d.x.values, d.y.values, d.phase_id.values, d.prev_id.values,
                            d.prev_same_team.values, d.prev_height_id.values, d.pressure.values,
                            d.minute.values, d.score_diff.values, d.is_home.values,
-                           d.position_id.values)
+                           d.position_id.values, d[ACTION_PROFILE].to_numpy())
 
 
 def pass_matrix(d):
     return pass_features(d.x.values, d.y.values, d.phase_id.values, d.prev_id.values,
                          d.prev_same_team.values, d.prev_height_id.values, d.pressure.values,
                          d.minute.values, d.score_diff.values, d.is_home.values,
-                         d.position_id.values, d.angle.values, d.height_id.values)
+                         d.position_id.values, d.angle.values, d.height_id.values,
+                         d[PASS_PROFILE].to_numpy())
 
 
 def shot_matrix(d):
