@@ -54,6 +54,17 @@ Then open `http://127.0.0.1:8000/api/teams/` in a browser. The endpoints and the
 in [docs/api.md](docs/api.md), and the screens of the interface in
 [docs/frontend-screens.md](docs/frontend-screens.md).
 
+## Run the interface
+
+Requires Node.js 22 or newer. Keep the API running in another terminal.
+
+```bash
+cd frontend
+npm install        # first time only
+npm run dev        # then open http://localhost:5173
+npm test           # frontend tests
+```
+
 ## Layout
 
 | Path | What it holds |
@@ -63,6 +74,7 @@ in [docs/api.md](docs/api.md), and the screens of the interface in
 | `src/metafut/sim` | The batched match simulator, fixtures (who plays) and calibration |
 | `src/metafut/eval` | Forecast scoring and baselines (Dixon-Coles, bookmaker odds) |
 | `backend` | Django REST API: settings, endpoints and the services they call |
+| `frontend` | React interface (Vite, Tailwind CSS): pages, components, API client, tests |
 | `scripts` | Numbered steps to rebuild everything, plus a match demo |
 | `reports` | Saved model and gate results |
 | `docs/modules` | One note per module for the thesis |

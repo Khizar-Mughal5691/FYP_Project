@@ -20,6 +20,7 @@ __pycache__/
 .env
 .vscode/
 .idea/
+.claude/
 
 # Frontend
 node_modules/
